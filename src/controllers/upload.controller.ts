@@ -6,8 +6,22 @@ import { UserModel } from '../models/user.model';
 const COVERS_BUCKET = 'covers';
 const AVATARS_BUCKET = 'avatars';
 
+async function ensureBucket(bucketName: string) {
+  const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+  const exists = buckets?.some((b: any) => b.name === bucketName);
+  if (!exists) {
+    await supabaseAdmin.storage.createBucket(bucketName, {
+      public: true,
+      allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+      fileSizeLimit: 5 * 1024 * 1024, // 5 MB
+    });
+  }
+}
+
 export const uploadCover = async (req: Request, res: Response): Promise<void> => {
   try {
+    await ensureBucket(COVERS_BUCKET);
+
     const file = req.file;
     if (!file) {
       res.status(400).json({ error: 'No se envió ningún archivo' });
@@ -37,6 +51,8 @@ export const uploadCover = async (req: Request, res: Response): Promise<void> =>
 
 export const uploadAvatar = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    await ensureBucket(AVATARS_BUCKET);
+
     const file = req.file;
     if (!file) {
       res.status(400).json({ error: 'No se envió ningún archivo' });
