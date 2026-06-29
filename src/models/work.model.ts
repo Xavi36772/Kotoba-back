@@ -95,7 +95,21 @@ export class WorkModel {
     return (data || []).map(mapWork);
   }
 
-  static async incrementViewCount(workId: string) {
+  static async incrementViewCount(workId: string, userId: string) {
+    const { data: existing } = await supabaseAdmin
+      .from('work_views')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('work_id', workId)
+      .maybeSingle();
+
+    if (existing) return;
+
+    const { error: insertError } = await supabaseAdmin
+      .from('work_views')
+      .insert({ user_id: userId, work_id: workId });
+    if (insertError) throw insertError;
+
     const { error } = await supabaseAdmin.rpc('increment_view_count', { row_id: workId });
     if (error) throw error;
   }

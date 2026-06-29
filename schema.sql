@@ -187,6 +187,15 @@ BEGIN
 END;
 $$;
 
+-- Vista única de usuario a obra (evita conteo múltiple)
+CREATE TABLE IF NOT EXISTS work_views (
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  work_id UUID REFERENCES works(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  PRIMARY KEY (user_id, work_id)
+);
+CREATE INDEX IF NOT EXISTS idx_work_views_work_id ON work_views(work_id);
+
 -- Votos de usuarios a obras
 CREATE TABLE IF NOT EXISTS work_votes (
   user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,

@@ -58,7 +58,7 @@ export const updateWork = async (req: Request, res: Response): Promise<void> => 
 
 export const incrementWorkView = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    await WorkModel.incrementViewCount(req.params.workId as string);
+    await WorkModel.incrementViewCount(req.params.workId as string, req.user!.id);
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal server error' });
