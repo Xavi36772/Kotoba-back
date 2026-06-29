@@ -2,27 +2,36 @@ import { supabase, supabaseAdmin } from '../config/supabase';
 
 export class WorkModel {
   static async findAll(filters?: Record<string, string>) {
-    let query = supabase.from('works').select('*');
+    let query = supabase
+      .from('works')
+      .select('*, users!works_author_id_fkey(username)');
     if (filters?.author_id) {
       query = query.eq('author_id', filters.author_id);
     } else {
-      // Public listing: exclude drafts
       query = query.neq('status', 'draft');
     }
     const { data, error } = await query;
     if (error) throw error;
-    return data;
+    return (data || []).map((w: any) => ({
+      ...w,
+      author_name: w.users?.username || '',
+      users: undefined,
+    }));
   }
 
   static async findById(id: string) {
     const { data, error } = await supabase
       .from('works')
-      .select('*')
+      .select('*, users!works_author_id_fkey(username)')
       .eq('id', id)
       .single();
-    
+
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      author_name: (data as any)?.users?.username || '',
+      users: undefined,
+    };
   }
 
   static async create(workData: any) {
@@ -31,7 +40,7 @@ export class WorkModel {
       .insert([workData])
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
   }
@@ -43,7 +52,7 @@ export class WorkModel {
       .eq('id', id)
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
   }
@@ -53,7 +62,7 @@ export class WorkModel {
       .from('works')
       .delete()
       .eq('id', id);
-    
+
     if (error) throw error;
     return true;
   }
@@ -63,7 +72,7 @@ export class WorkModel {
       .from('works')
       .select('*', { count: 'exact', head: true })
       .eq('author_id', authorId);
-    
+
     if (error) throw error;
     return count || 0;
   }
@@ -71,10 +80,14 @@ export class WorkModel {
   static async findByAuthor(authorId: string) {
     const { data, error } = await supabase
       .from('works')
-      .select('*')
+      .select('*, users!works_author_id_fkey(username)')
       .eq('author_id', authorId);
-    
+
     if (error) throw error;
-    return data;
+    return (data || []).map((w: any) => ({
+      ...w,
+      author_name: w.users?.username || '',
+      users: undefined,
+    }));
   }
 }

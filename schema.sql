@@ -35,6 +35,14 @@ CREATE TABLE chapters (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- Seguidores
+CREATE TABLE followers (
+  follower_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  following_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  PRIMARY KEY (follower_id, following_id)
+);
+
 -- Comentarios
 CREATE TABLE comments (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -50,6 +58,8 @@ CREATE INDEX idx_works_author_id ON works(author_id);
 CREATE INDEX idx_chapters_work_id ON chapters(work_id);
 CREATE INDEX idx_comments_work_id ON comments(work_id);
 CREATE INDEX idx_comments_chapter_id ON comments(chapter_id);
+CREATE INDEX idx_followers_follower_id ON followers(follower_id);
+CREATE INDEX idx_followers_following_id ON followers(following_id);
 
 -- Trigger: crea perfil automáticamente al registrarse un usuario en Auth
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -126,6 +136,21 @@ CREATE POLICY "Autores pueden eliminar sus capítulos"
         AND works.author_id = auth.uid()
     )
   );
+
+-- Followers
+ALTER TABLE followers ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Seguidores son públicos para lectura"
+  ON followers FOR SELECT
+  USING (true);
+
+CREATE POLICY "Usuarios autenticados pueden seguir"
+  ON followers FOR INSERT
+  WITH CHECK (auth.uid() = follower_id);
+
+CREATE POLICY "Usuarios pueden dejar de seguir"
+  ON followers FOR DELETE
+  USING (auth.uid() = follower_id);
 
 -- Comments
 CREATE POLICY "Comments son públicos para lectura"
