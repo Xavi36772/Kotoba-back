@@ -56,6 +56,15 @@ export const updateWork = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
+export const incrementWorkView = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    await WorkModel.incrementViewCount(req.params.workId as string);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
 export const deleteWork = async (req: Request, res: Response): Promise<void> => {
   try {
     await WorkModel.delete(req.params.id as string);

@@ -1,10 +1,26 @@
 import { supabase, supabaseAdmin } from '../config/supabase';
 
+const WORK_SELECT = `
+  *,
+  users!works_author_id_fkey(username),
+  chapters:chapters(count)
+`;
+
+function mapWork(w: any) {
+  return {
+    ...w,
+    author_name: w.users?.username || '',
+    chapter_count: w.chapters?.[0]?.count ?? 0,
+    users: undefined,
+    chapters: undefined,
+  };
+}
+
 export class WorkModel {
   static async findAll(filters?: Record<string, string>) {
     let query = supabase
       .from('works')
-      .select('*, users!works_author_id_fkey(username)');
+      .select(WORK_SELECT);
     if (filters?.author_id) {
       query = query.eq('author_id', filters.author_id);
     } else {
@@ -12,26 +28,18 @@ export class WorkModel {
     }
     const { data, error } = await query;
     if (error) throw error;
-    return (data || []).map((w: any) => ({
-      ...w,
-      author_name: w.users?.username || '',
-      users: undefined,
-    }));
+    return (data || []).map(mapWork);
   }
 
   static async findById(id: string) {
     const { data, error } = await supabase
       .from('works')
-      .select('*, users!works_author_id_fkey(username)')
+      .select(WORK_SELECT)
       .eq('id', id)
       .single();
 
     if (error) throw error;
-    return {
-      ...data,
-      author_name: (data as any)?.users?.username || '',
-      users: undefined,
-    };
+    return mapWork(data);
   }
 
   static async create(workData: any) {
@@ -80,14 +88,15 @@ export class WorkModel {
   static async findByAuthor(authorId: string) {
     const { data, error } = await supabase
       .from('works')
-      .select('*, users!works_author_id_fkey(username)')
+      .select(WORK_SELECT)
       .eq('author_id', authorId);
 
     if (error) throw error;
-    return (data || []).map((w: any) => ({
-      ...w,
-      author_name: w.users?.username || '',
-      users: undefined,
-    }));
+    return (data || []).map(mapWork);
+  }
+
+  static async incrementViewCount(workId: string) {
+    const { error } = await supabaseAdmin.rpc('increment_view_count', { row_id: workId });
+    if (error) throw error;
   }
 }

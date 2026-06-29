@@ -168,3 +168,76 @@ CREATE POLICY "Usuarios pueden actualizar sus comentarios"
 CREATE POLICY "Usuarios pueden eliminar sus comentarios"
   ON comments FOR DELETE
   USING (auth.uid() = user_id);
+
+-- ══════════════════════════════════════════════════════════════════════════════
+-- VOTOS y FAVORITOS
+-- ══════════════════════════════════════════════════════════════════════════════
+
+-- view_count en works (para conteo de lecturas)
+ALTER TABLE works ADD COLUMN IF NOT EXISTS view_count INTEGER DEFAULT 0;
+
+-- Función para incrementar view_count atómicamente
+CREATE OR REPLACE FUNCTION public.increment_view_count(row_id UUID)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  UPDATE public.works SET view_count = COALESCE(view_count, 0) + 1 WHERE id = row_id;
+END;
+$$;
+
+-- Votos de usuarios a obras
+CREATE TABLE IF NOT EXISTS work_votes (
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  work_id UUID REFERENCES works(id) ON DELETE CASCADE NOT NULL,
+  vote SMALLINT NOT NULL CHECK (vote IN (1, -1)),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  PRIMARY KEY (user_id, work_id)
+);
+
+-- Favoritos / Bookmarks
+CREATE TABLE IF NOT EXISTS bookmarks (
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  work_id UUID REFERENCES works(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  PRIMARY KEY (user_id, work_id)
+);
+
+-- Índices
+CREATE INDEX IF NOT EXISTS idx_work_votes_work_id ON work_votes(work_id);
+CREATE INDEX IF NOT EXISTS idx_bookmarks_user_id ON bookmarks(user_id);
+
+-- RLS: Work Votes
+ALTER TABLE work_votes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Votos son públicos para lectura"
+  ON work_votes FOR SELECT
+  USING (true);
+
+CREATE POLICY "Usuarios autenticados pueden votar"
+  ON work_votes FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Usuarios pueden actualizar sus votos"
+  ON work_votes FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Usuarios pueden eliminar sus votos"
+  ON work_votes FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- RLS: Bookmarks
+ALTER TABLE bookmarks ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Usuarios ven sus propios bookmarks"
+  ON bookmarks FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Usuarios autenticados pueden crear bookmarks"
+  ON bookmarks FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Usuarios pueden eliminar sus bookmarks"
+  ON bookmarks FOR DELETE
+  USING (auth.uid() = user_id);

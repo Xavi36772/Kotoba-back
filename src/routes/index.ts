@@ -5,6 +5,7 @@ import workRoutes from './work.routes';
 import chapterRoutes from './chapter.routes';
 import commentRoutes from './comment.routes';
 import uploadRoutes from './upload.routes';
+import bookmarkRoutes from './bookmark.routes';
 
 const router = Router();
 
@@ -14,6 +15,7 @@ router.use('/works', workRoutes);
 router.use('/chapters', chapterRoutes);
 router.use('/comments', commentRoutes);
 router.use('/upload', uploadRoutes);
+router.use('/bookmarks', bookmarkRoutes);
 
 export default router;
 
