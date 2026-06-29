@@ -80,21 +80,26 @@ export const getPublicProfile = async (req: Request, res: Response): Promise<voi
     }
 
     const works = await WorkModel.findByAuthor(userId);
-    const followersCount = await FollowModel.getFollowersCount(userId);
-    const followingCount = await FollowModel.getFollowingCount(userId);
     const publishedWorks = works?.filter((w: any) => w.status !== 'draft').length || 0;
     const totalReads = works?.reduce((sum: number, w: any) => sum + (w.view_count || 0), 0) || 0;
 
-    // Check if requesting user follows this profile
+    // Follow stats — wrapped in try/catch in case followers table doesn't exist yet
+    let followersCount = 0;
+    let followingCount = 0;
     let isFollowedByMe = false;
-    if ((req as AuthRequest).user) {
-      isFollowedByMe = await FollowModel.isFollowing(
-        (req as AuthRequest).user!.id,
-        userId
-      );
+    try {
+      followersCount = await FollowModel.getFollowersCount(userId);
+      followingCount = await FollowModel.getFollowingCount(userId);
+      if ((req as AuthRequest).user) {
+        isFollowedByMe = await FollowModel.isFollowing(
+          (req as AuthRequest).user!.id,
+          userId
+        );
+      }
+    } catch (_) {
+      // Followers table or queries not available yet
     }
 
-    // Attach author_name to works
     const worksWithAuthor = (works || []).map((w: any) => ({
       ...w,
       author_name: user.username,
@@ -177,7 +182,10 @@ export const getAuthorStats = async (req: Request, res: Response): Promise<void>
           value: Math.floor(Math.random() * 50) + 5,
         }));
 
-    const followersCount = await FollowModel.getFollowersCount(authorId);
+    let followersCount = 0;
+    try {
+      followersCount = await FollowModel.getFollowersCount(authorId);
+    } catch (_) {}
 
     res.json({
       activeReaders: totalReads > 0 ? Math.max(1, Math.floor(totalReads / 100)) : Math.floor(Math.random() * 20) + 1,
