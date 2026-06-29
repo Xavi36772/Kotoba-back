@@ -27,3 +27,12 @@ export const deleteComment = async (req: Request, res: Response): Promise<void> 
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
+
+export const getcoments = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const comments = await CommentModel.findAll();
+    res.json(comments);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};

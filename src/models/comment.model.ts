@@ -32,4 +32,14 @@ export class CommentModel {
     if (error) throw error;
     return true;
   }
+
+  static async findAll() {
+    const { data, error } = await supabase
+      .from('comments')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
 }

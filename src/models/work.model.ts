@@ -3,8 +3,11 @@ import { supabase, supabaseAdmin } from '../config/supabase';
 export class WorkModel {
   static async findAll(filters?: Record<string, string>) {
     let query = supabase.from('works').select('*');
-    if (filters) {
-      if (filters.author_id) query = query.eq('author_id', filters.author_id);
+    if (filters?.author_id) {
+      query = query.eq('author_id', filters.author_id);
+    } else {
+      // Public listing: exclude drafts
+      query = query.neq('status', 'draft');
     }
     const { data, error } = await query;
     if (error) throw error;
