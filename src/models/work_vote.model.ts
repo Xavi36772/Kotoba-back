@@ -38,7 +38,8 @@ export class WorkVoteModel {
   static async getWorkStats(workId: string) {
     const { data, error } = await supabaseAdmin
       .from('work_votes')
-      .select('vote');
+      .select('vote')
+      .eq('work_id', workId);
 
     if (error) throw error;
     const votes = (data || []) as { vote: number }[];
