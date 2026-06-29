@@ -165,6 +165,32 @@ export const unfollowUser = async (req: AuthRequest, res: Response): Promise<voi
   }
 };
 
+export const getFollowingAuthors = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const following = await FollowModel.getFollowing(userId) || [];
+
+    const authorsWithWorks = await Promise.all(
+      following.map(async (f: any) => {
+        const followedUser = f.users || {};
+        const works = await WorkModel.findByAuthor(followedUser.id) || [];
+        const worksWithAuthor = works.map((w: any) => ({
+          ...w,
+          author_name: followedUser.username || '',
+        }));
+        return {
+          user: followedUser,
+          works: worksWithAuthor,
+        };
+      })
+    );
+
+    res.json(authorsWithWorks);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
 export const getAuthorStats = async (req: Request, res: Response): Promise<void> => {
   try {
     const authorId = req.params.authorId as string;

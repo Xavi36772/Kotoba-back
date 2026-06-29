@@ -7,6 +7,7 @@ import {
   getPublicProfile,
   followUser,
   unfollowUser,
+  getFollowingAuthors,
   getAuthorStats,
 } from '../controllers/user.controller';
 import { verifyToken } from '../middleware/auth.middleware';
@@ -21,6 +22,7 @@ router.get('/', getUsers);
 router.get('/me', verifyToken, getMe);
 router.put('/me', verifyToken, updateMe);
 router.put('/me/avatar', verifyToken, upload.single('image'), uploadAvatar);
+router.get('/me/following-authors', verifyToken, getFollowingAuthors);
 router.get('/:id', getUserById);
 router.get('/:id/profile', getPublicProfile);
 router.post('/:id/follow', verifyToken, followUser);
