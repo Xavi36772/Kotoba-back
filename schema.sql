@@ -18,7 +18,7 @@ CREATE TABLE works (
   genre TEXT,
   cover_url TEXT,
   author_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
-  status TEXT DEFAULT 'ongoing' CHECK (status IN ('ongoing', 'completed', 'hiatus')),
+  status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'ongoing', 'completed', 'hiatus')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -38,7 +38,8 @@ CREATE TABLE chapters (
 -- Comentarios
 CREATE TABLE comments (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  chapter_id UUID REFERENCES chapters(id) ON DELETE CASCADE NOT NULL,
+  work_id UUID REFERENCES works(id) ON DELETE CASCADE NOT NULL,
+  chapter_id UUID REFERENCES chapters(id) ON DELETE CASCADE,
   user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
   content TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -47,6 +48,7 @@ CREATE TABLE comments (
 -- Índices para mejorar rendimiento de consultas comunes
 CREATE INDEX idx_works_author_id ON works(author_id);
 CREATE INDEX idx_chapters_work_id ON chapters(work_id);
+CREATE INDEX idx_comments_work_id ON comments(work_id);
 CREATE INDEX idx_comments_chapter_id ON comments(chapter_id);
 
 -- Trigger: crea perfil automáticamente al registrarse un usuario en Auth

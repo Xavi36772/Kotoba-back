@@ -1,5 +1,33 @@
 import { Request, Response } from 'express';
+import { AuthRequest } from '../middleware/auth.middleware';
 import { CommentModel } from '../models/comment.model';
+
+export const getCommentsByWorkId = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const comments = await CommentModel.findByWorkId(req.params.workId as string);
+    res.json(comments);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+export const createWorkComment = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { content } = req.body;
+    if (!content || !content.trim()) {
+      res.status(400).json({ error: 'Content is required' });
+      return;
+    }
+    const comment = await CommentModel.create({
+      work_id: req.params.workId,
+      user_id: req.user!.id,
+      content: content.trim(),
+    });
+    res.status(201).json(comment);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
 
 export const getCommentsByChapterId = async (req: Request, res: Response): Promise<void> => {
   try {
