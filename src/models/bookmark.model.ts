@@ -2,7 +2,7 @@ import { supabase, supabaseAdmin } from '../config/supabase';
 
 export class BookmarkModel {
   static async findByUser(userId: string) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('bookmarks')
       .select('*, works(*, users!works_author_id_fkey(username))')
       .eq('user_id', userId)
