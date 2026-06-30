@@ -31,7 +31,7 @@ export const searchWorks = async (req: Request, res: Response): Promise<void> =>
     // 2. Búsqueda vectorial con pgvector
     const { data, error } = await supabase.rpc('search_works', {
       query_embedding: embedding,
-      match_threshold: 0.5,
+      match_threshold: 0.3,
       match_count: 20,
     });
     if (error) throw error;
