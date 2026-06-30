@@ -20,6 +20,5 @@ router.get('/:workId/vote', verifyToken, getWorkVoteAndBookmarkStatus);
 router.post('/', verifyToken, createWork);
 router.put('/:id', verifyToken, updateWork);
 router.delete('/:id', verifyToken, deleteWork);
-router.post('/reindex', verifyToken, reindexWorks);
 
 export default router;
