@@ -28,7 +28,7 @@ export const getWorkById = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-const allowedFields = ['title', 'synopsis', 'genre', 'cover_url', 'author_id', 'status', 'language', 'tags'];
+const allowedFields = ['title', 'synopsis', 'genre', 'cover_url', 'author_id', 'status', 'language', 'tags', 'updated_at'];
 
 function sanitize(body: any) {
   const clean: Record<string, any> = {};
