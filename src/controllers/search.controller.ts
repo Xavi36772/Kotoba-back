@@ -31,12 +31,27 @@ export const searchWorks = async (req: Request, res: Response): Promise<void> =>
     // 2. Búsqueda vectorial con pgvector
     const { data, error } = await supabase.rpc('search_works', {
       query_embedding: embedding,
-      match_threshold: 0.3,
+      match_threshold: 0.1,
       match_count: 20,
     });
     if (error) throw error;
 
-    res.json({ results: (data || []).map(mapSearchWork), mode: 'semantic', query });
+    const results = (data || []).map(mapSearchWork);
+
+    // 3. Fallback textual si la búsqueda semántica no encontró nada
+    if (results.length === 0) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('works')
+        .select(WORK_SELECT)
+        .or(`title.ilike.%${query}%,synopsis.ilike.%${query}%`)
+        .neq('status', 'draft')
+        .limit(20);
+      if (fallbackError) throw fallbackError;
+      res.json({ results: (fallbackData || []).map(mapSearchWork), mode: 'textual', query });
+      return;
+    }
+
+    res.json({ results, mode: 'semantic', query });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Error en búsqueda' });
   }
