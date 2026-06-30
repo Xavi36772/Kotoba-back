@@ -24,7 +24,9 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     res.status(201).json({ message: 'User registered successfully' });
   } catch (error: any) {
-    const msg = error.message || 'Error al registrar usuario';
+    console.error('Register error:', error?.message || error, error?.stack || '');
+    const rawMsg = error?.message || error?.error_description || '';
+    const msg = rawMsg || 'Error al registrar usuario. Verifica que el email no esté registrado.';
     res.status(400).json({ error: msg });
   }
 };
