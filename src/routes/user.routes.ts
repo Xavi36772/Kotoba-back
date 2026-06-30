@@ -12,7 +12,7 @@ import {
 } from '../controllers/user.controller';
 import { verifyToken } from '../middleware/auth.middleware';
 import multer from 'multer';
-import { uploadAvatar } from '../controllers/upload.controller';
+import { uploadAvatar, uploadBanner } from '../controllers/upload.controller';
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -22,6 +22,7 @@ router.get('/', getUsers);
 router.get('/me', verifyToken, getMe);
 router.put('/me', verifyToken, updateMe);
 router.put('/me/avatar', verifyToken, upload.single('image'), uploadAvatar);
+router.put('/me/banner', verifyToken, upload.single('image'), uploadBanner);
 router.get('/me/following-authors', verifyToken, getFollowingAuthors);
 router.get('/:id', getUserById);
 router.get('/:id/profile', getPublicProfile);

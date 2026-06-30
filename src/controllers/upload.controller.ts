@@ -5,6 +5,7 @@ import { UserModel } from '../models/user.model';
 
 const COVERS_BUCKET = 'covers';
 const AVATARS_BUCKET = 'avatars';
+const BANNERS_BUCKET = 'banners';
 
 async function ensureBucket(bucketName: string) {
   const { data: buckets } = await supabaseAdmin.storage.listBuckets();
@@ -84,5 +85,43 @@ export const uploadAvatar = async (req: AuthRequest, res: Response): Promise<voi
     res.json({ url: avatarUrl, user: updated });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Error al subir el avatar' });
+  }
+};
+
+export const uploadBanner = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    await ensureBucket(BANNERS_BUCKET);
+
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({ error: 'No se envió ningún archivo' });
+      return;
+    }
+
+    const userId = req.user!.id;
+    const ext = file.originalname.split('.').pop() || 'jpg';
+    const fileName = `banner_${userId}.${ext}`;
+
+    const { data, error } = await supabaseAdmin.storage
+      .from(BANNERS_BUCKET)
+      .upload(fileName, file.buffer, {
+        contentType: file.mimetype,
+        upsert: true,
+      });
+
+    if (error) throw error;
+
+    const { data: publicUrlData } = supabaseAdmin.storage
+      .from(BANNERS_BUCKET)
+      .getPublicUrl(data.path);
+
+    const bannerUrl = publicUrlData.publicUrl;
+
+    // Update user profile with new banner URL
+    const updated = await UserModel.update(userId, { banner_url: bannerUrl });
+
+    res.json({ url: bannerUrl, user: updated });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Error al subir el banner' });
   }
 };
