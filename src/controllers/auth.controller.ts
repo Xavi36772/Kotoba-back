@@ -24,9 +24,15 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     res.status(201).json({ message: 'User registered successfully' });
   } catch (error: any) {
-    console.error('Register error:', error?.message || error, error?.stack || '');
-    const rawMsg = error?.message || error?.error_description || '';
-    const msg = rawMsg || 'Error al registrar usuario. Verifica que el email no esté registrado.';
+    console.error('Register error type:', typeof error, 'value:', JSON.stringify(error));
+    const rawMsg =
+      (typeof error === 'string' ? error : '') ||
+      error?.message ||
+      error?.error_description ||
+      error?.msg ||
+      '';
+    const cleanMsg = rawMsg.replace(/[{}[\]()]/g, '').trim();
+    const msg = cleanMsg || 'Error al registrar usuario. Verifica tus datos o que el email no esté registrado.';
     res.status(400).json({ error: msg });
   }
 };
