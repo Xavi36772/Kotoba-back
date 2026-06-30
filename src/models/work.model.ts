@@ -1,6 +1,6 @@
 import { supabase, supabaseAdmin } from '../config/supabase';
 
-const WORK_SELECT = `
+export const WORK_SELECT = `
   *,
   users!works_author_id_fkey(username),
   chapters:chapters(count)

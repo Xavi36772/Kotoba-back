@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { WorkModel } from '../models/work.model';
+import { getEmbedding } from '../services/embedding.service';
+import { supabaseAdmin } from '../config/supabase';
 
 export const getWorks = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -36,11 +38,26 @@ function sanitize(body: any) {
   return clean;
 }
 
+async function storeEmbedding(workId: string, title: string, synopsis: string) {
+  try {
+    const text = `${title} ${synopsis}`.trim();
+    if (!text) return;
+    const embedding = await getEmbedding(text);
+    await supabaseAdmin.from('work_embeddings').upsert(
+      { work_id: workId, embedding },
+      { onConflict: 'work_id' },
+    );
+  } catch (_) {
+    // Search service not available — skip embedding
+  }
+}
+
 export const createWork = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const cleanData = sanitize(req.body);
     cleanData.author_id = req.user!.id;
     const work = await WorkModel.create(cleanData);
+    storeEmbedding(work.id, work.title, work.synopsis || '');
     res.status(201).json(work);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal server error' });
@@ -50,6 +67,7 @@ export const createWork = async (req: AuthRequest, res: Response): Promise<void>
 export const updateWork = async (req: Request, res: Response): Promise<void> => {
   try {
     const work = await WorkModel.update(req.params.id as string, sanitize(req.body));
+    storeEmbedding(work.id, work.title, work.synopsis || '');
     res.json(work);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal server error' });
@@ -62,6 +80,35 @@ export const incrementWorkView = async (req: AuthRequest, res: Response): Promis
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+export const reindexWorks = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { data: works, error } = await supabaseAdmin
+      .from('works')
+      .select('id, title, synopsis')
+      .neq('status', 'draft');
+    if (error) throw error;
+
+    let count = 0;
+    for (const w of works || []) {
+      const text = `${w.title} ${w.synopsis || ''}`.trim();
+      if (!text) continue;
+      try {
+        const embedding = await getEmbedding(text);
+        await supabaseAdmin.from('work_embeddings').upsert(
+          { work_id: w.id, embedding },
+          { onConflict: 'work_id' },
+        );
+        count++;
+      } catch (_) {
+        // skip individual failures
+      }
+    }
+    res.json({ reindexed: count, total: works?.length || 0 });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Error al reindexar' });
   }
 };
 
