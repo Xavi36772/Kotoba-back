@@ -17,10 +17,15 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     });
 
     if (authError) throw authError;
+    if (!authData.user) {
+      res.status(400).json({ error: 'No se pudo crear el usuario. Intenta de nuevo.' });
+      return;
+    }
 
-    res.status(201).json({ message: 'User registered successfully', user: authData.user });
+    res.status(201).json({ message: 'User registered successfully' });
   } catch (error: any) {
-    res.status(400).json({ error: error.message || 'Error registering user' });
+    const msg = error.message || 'Error al registrar usuario';
+    res.status(400).json({ error: msg });
   }
 };
 
