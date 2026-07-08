@@ -38,9 +38,19 @@ export const getCommentsByChapterId = async (req: Request, res: Response): Promi
   }
 };
 
+const commentAllowedFields = ['work_id', 'chapter_id', 'user_id', 'content'];
+
+function sanitizeComment(body: any) {
+  const clean: Record<string, any> = {};
+  for (const key of commentAllowedFields) {
+    if (body[key] !== undefined) clean[key] = body[key];
+  }
+  return clean;
+}
+
 export const createComment = async (req: Request, res: Response): Promise<void> => {
   try {
-    const comment = await CommentModel.create(req.body);
+    const comment = await CommentModel.create(sanitizeComment(req.body));
     res.status(201).json(comment);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal server error' });

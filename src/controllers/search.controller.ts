@@ -13,6 +13,7 @@ export const searchWorks = async (req: Request, res: Response): Promise<void> =>
 
     // 1. Generar embedding de la query via BETO
     let embedding: number[];
+    const sanitizedQuery = query.replace(/[\\%_]/g, '\\$&');
     try {
       embedding = await getEmbedding(query);
     } catch (_) {
@@ -20,7 +21,7 @@ export const searchWorks = async (req: Request, res: Response): Promise<void> =>
       const { data, error } = await supabase
         .from('works')
         .select(WORK_SELECT)
-        .or(`title.ilike.%${query}%,synopsis.ilike.%${query}%`)
+        .or(`title.ilike.%${sanitizedQuery}%,synopsis.ilike.%${sanitizedQuery}%`)
         .neq('status', 'draft')
         .limit(20);
       if (error) throw error;
@@ -43,7 +44,7 @@ export const searchWorks = async (req: Request, res: Response): Promise<void> =>
       const { data: fallbackData, error: fallbackError } = await supabase
         .from('works')
         .select(WORK_SELECT)
-        .or(`title.ilike.%${query}%,synopsis.ilike.%${query}%`)
+        .or(`title.ilike.%${sanitizedQuery}%,synopsis.ilike.%${sanitizedQuery}%`)
         .neq('status', 'draft')
         .limit(20);
       if (fallbackError) throw fallbackError;
