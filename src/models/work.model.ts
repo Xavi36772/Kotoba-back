@@ -26,6 +26,9 @@ export class WorkModel {
     } else {
       query = query.neq('status', 'draft');
     }
+    if (filters?.genre && filters.genre !== 'Todos') {
+      query = query.contains('genres', [filters.genre]);
+    }
     const { data, error } = await query;
     if (error) throw error;
     return (data || []).map(mapWork);
