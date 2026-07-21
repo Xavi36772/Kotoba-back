@@ -52,7 +52,7 @@ export const updateMe = async (req: AuthRequest, res: Response): Promise<void> =
       return;
     }
 
-    const allowedFields = ['bio', 'avatar_url', 'banner_url', 'username', 'age', 'country'];
+    const allowedFields = ['bio', 'avatar_url', 'banner_url', 'username', 'age', 'country', 'paypal_email'];
     const cleanData: Record<string, any> = {};
     for (const key of allowedFields) {
       if (req.body[key] !== undefined) cleanData[key] = req.body[key];
