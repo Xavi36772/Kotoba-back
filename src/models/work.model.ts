@@ -110,7 +110,19 @@ export class WorkModel {
       .insert({ user_id: userId, work_id: workId });
     if (insertError) throw insertError;
 
-    const { error } = await supabaseAdmin.rpc('increment_view_count', { row_id: workId });
-    if (error) throw error;
+    // Try the RPC first; if it doesn't exist, fall back to manual count
+    const { error: rpcError } = await supabaseAdmin
+      .rpc('increment_view_count', { row_id: workId });
+    if (rpcError) {
+      const { count, error: countError } = await supabaseAdmin
+        .from('work_views')
+        .select('*', { count: 'exact', head: true })
+        .eq('work_id', workId);
+      if (countError) throw countError;
+      await supabaseAdmin
+        .from('works')
+        .update({ view_count: count || 0 })
+        .eq('id', workId);
+    }
   }
 }
