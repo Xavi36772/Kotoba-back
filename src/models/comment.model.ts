@@ -4,7 +4,7 @@ export class CommentModel {
   static async findByWorkId(workId: string) {
     const { data, error } = await supabase
       .from('comments')
-      .select('*, users(username, avatar_url)')
+      .select('*')
       .eq('work_id', workId)
       .order('created_at', { ascending: true });
 
@@ -15,7 +15,7 @@ export class CommentModel {
   static async findByChapterId(chapterId: string) {
     const { data, error } = await supabase
       .from('comments')
-      .select('*, users(username, avatar_url)')
+      .select('*')
       .eq('chapter_id', chapterId)
       .order('created_at', { ascending: true });
 
