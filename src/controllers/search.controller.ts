@@ -6,6 +6,13 @@ import { WORK_SELECT } from '../models/work.model';
 export const searchWorks = async (req: Request, res: Response): Promise<void> => {
   try {
     const query = (req.query.q as string || '').trim();
+    const genreFilter = req.query.genre as string | undefined;
+
+    function applyGenreFilter(query: any, genre?: string) {
+      if (!genre || genre === 'Todos') return query;
+      return query.contains('genres', [genre]);
+    }
+
     if (!query) {
       res.status(400).json({ error: 'Query parameter "q" is required' });
       return;
@@ -18,12 +25,14 @@ export const searchWorks = async (req: Request, res: Response): Promise<void> =>
       embedding = await getEmbedding(query);
     } catch (_) {
       // Fallback: si el search-service no está disponible, búsqueda textual
-      const { data, error } = await supabase
+      let fbQuery = supabase
         .from('works')
         .select(WORK_SELECT)
         .or(`title.ilike.%${sanitizedQuery}%,synopsis.ilike.%${sanitizedQuery}%`)
         .neq('status', 'draft')
         .limit(20);
+      fbQuery = applyGenreFilter(fbQuery, genreFilter);
+      const { data, error } = await fbQuery;
       if (error) throw error;
       res.json({ results: (data || []).map(mapSearchWork), mode: 'textual' });
       return;
@@ -37,16 +46,21 @@ export const searchWorks = async (req: Request, res: Response): Promise<void> =>
     });
     if (error) throw error;
 
-    const results = (data || []).map(mapSearchWork);
+    let results = (data || []).map(mapSearchWork);
+    if (genreFilter && genreFilter !== 'Todos') {
+      results = results.filter((w: any) => w.genres?.includes(genreFilter));
+    }
 
     // 3. Fallback textual si la búsqueda semántica no encontró nada
     if (results.length === 0) {
-      const { data: fallbackData, error: fallbackError } = await supabase
+      let fbQuery = supabase
         .from('works')
         .select(WORK_SELECT)
         .or(`title.ilike.%${sanitizedQuery}%,synopsis.ilike.%${sanitizedQuery}%`)
         .neq('status', 'draft')
         .limit(20);
+      fbQuery = applyGenreFilter(fbQuery, genreFilter);
+      const { data: fallbackData, error: fallbackError } = await fbQuery;
       if (fallbackError) throw fallbackError;
       res.json({ results: (fallbackData || []).map(mapSearchWork), mode: 'textual', query });
       return;
@@ -66,7 +80,7 @@ function mapSearchWork(w: any) {
     author_name: w.users?.username || w.author_name || '',
     cover_url: w.cover_url,
     synopsis: w.synopsis,
-    genre: w.genre,
+    genres: w.genres || [],
     tags: w.tags || [],
     status: w.status,
     chapter_count: w.chapter_count ?? w.chapters?.[0]?.count ?? 0,

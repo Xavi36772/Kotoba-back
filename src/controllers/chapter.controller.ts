@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { ChapterModel } from '../models/chapter.model';
+import { moderateText } from '../services/moderation.service';
 
 const allowedFields = ['work_id', 'title', 'content', 'status', 'order_number'];
 
@@ -36,6 +37,22 @@ export const getChapterById = async (req: Request, res: Response): Promise<void>
 export const createChapter = async (req: Request, res: Response): Promise<void> => {
   try {
     const chapter = await ChapterModel.create(sanitize(req.body));
+
+    // Moderate title + content
+    const textToCheck = [chapter.title, chapter.content].filter(Boolean).join('\n');
+    if (textToCheck.trim()) {
+      const result = await moderateText(textToCheck, chapter.work_id);
+      if (result.flagged) {
+        await ChapterModel.delete(chapter.id);
+        res.status(400).json({
+          error: 'Contenido rechazado por moderación',
+          reason: result.reason,
+          categories: result.categories,
+        });
+        return;
+      }
+    }
+
     res.status(201).json(chapter);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal server error' });
@@ -45,6 +62,22 @@ export const createChapter = async (req: Request, res: Response): Promise<void> 
 export const updateChapter = async (req: Request, res: Response): Promise<void> => {
   try {
     const chapter = await ChapterModel.update(req.params.id as string, sanitize(req.body));
+
+    // Moderate updated title + content
+    const textToCheck = [chapter.title, chapter.content].filter(Boolean).join('\n');
+    if (textToCheck.trim()) {
+      const result = await moderateText(textToCheck, chapter.work_id);
+      if (result.flagged) {
+        await ChapterModel.delete(chapter.id);
+        res.status(400).json({
+          error: 'Contenido rechazado por moderación',
+          reason: result.reason,
+          categories: result.categories,
+        });
+        return;
+      }
+    }
+
     res.json(chapter);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal server error' });

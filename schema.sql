@@ -15,7 +15,7 @@ CREATE TABLE works (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   title TEXT NOT NULL,
   synopsis TEXT,
-  genre TEXT,
+  genres TEXT[] DEFAULT '{}'::text[],
   cover_url TEXT,
   author_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
   status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'ongoing', 'completed', 'hiatus')),

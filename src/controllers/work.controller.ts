@@ -2,12 +2,14 @@ import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { WorkModel } from '../models/work.model';
 import { getEmbedding } from '../services/embedding.service';
+import { moderateText } from '../services/moderation.service';
 import { supabaseAdmin } from '../config/supabase';
 
 export const getWorks = async (req: Request, res: Response): Promise<void> => {
   try {
     const filters: Record<string, string> = {};
     if (req.query.author_id) filters.author_id = req.query.author_id as string;
+    if (req.query.genre) filters.genre = req.query.genre as string;
     const works = await WorkModel.findAll(Object.keys(filters).length > 0 ? filters : undefined);
     res.json(works);
   } catch (error: any) {
@@ -28,7 +30,12 @@ export const getWorkById = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-const allowedFields = ['title', 'synopsis', 'genre', 'cover_url', 'author_id', 'status', 'language', 'tags', 'updated_at'];
+const VALID_GENRES = [
+  'Ciencia Ficción', 'Fantasía', 'Ciberpunk', 'Fantasía Oscura',
+  'Thriller', 'Misterio', 'Romance', 'Horror', 'Drama', 'Poesía',
+];
+
+const allowedFields = ['title', 'synopsis', 'genres', 'cover_url', 'author_id', 'status', 'language', 'tags', 'updated_at', 'is_mature'];
 
 function sanitize(body: any) {
   const clean: Record<string, any> = {};
@@ -37,6 +44,21 @@ function sanitize(body: any) {
   }
   return clean;
 }
+
+function validateGenres(genres: any): string | null {
+  if (!Array.isArray(genres)) return 'genres debe ser un arreglo';
+  if (genres.length < 1 || genres.length > 3) return 'Debe haber entre 1 y 3 géneros';
+  for (const g of genres) {
+    if (typeof g !== 'string' || !VALID_GENRES.includes(g)) {
+      return `"${g}" no es un género válido`;
+    }
+  }
+  return null;
+}
+
+export const getGenres = async (_req: Request, res: Response): Promise<void> => {
+  res.json(VALID_GENRES);
+};
 
 async function storeEmbedding(workId: string, title: string, synopsis: string) {
   try {
@@ -54,10 +76,30 @@ async function storeEmbedding(workId: string, title: string, synopsis: string) {
 
 export const createWork = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    if (req.body.genres !== undefined) {
+      const error = validateGenres(req.body.genres);
+      if (error) { res.status(400).json({ error }); return; }
+    }
     const cleanData = sanitize(req.body);
     cleanData.author_id = req.user!.id;
     const work = await WorkModel.create(cleanData);
     storeEmbedding(work.id, work.title, work.synopsis || '');
+
+    // Moderate synopsis
+    const textToCheck = [work.title, work.synopsis].filter(Boolean).join('\n');
+    if (textToCheck.trim()) {
+      const result = await moderateText(textToCheck, work.id);
+      if (result.flagged) {
+        await WorkModel.delete(work.id);
+        res.status(400).json({
+          error: 'Historia rechazada por moderación',
+          reason: result.reason,
+          categories: result.categories,
+        });
+        return;
+      }
+    }
+
     res.status(201).json(work);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal server error' });
@@ -66,6 +108,10 @@ export const createWork = async (req: AuthRequest, res: Response): Promise<void>
 
 export const updateWork = async (req: Request, res: Response): Promise<void> => {
   try {
+    if (req.body.genres !== undefined) {
+      const error = validateGenres(req.body.genres);
+      if (error) { res.status(400).json({ error }); return; }
+    }
     const work = await WorkModel.update(req.params.id as string, sanitize(req.body));
     storeEmbedding(work.id, work.title, work.synopsis || '');
     res.json(work);
