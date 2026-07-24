@@ -7,6 +7,7 @@ import commentRoutes from './comment.routes';
 import uploadRoutes from './upload.routes';
 import bookmarkRoutes from './bookmark.routes';
 import searchRoutes from './search.routes';
+import notificationRoutes from './notification.routes';
 
 const router = Router();
 
@@ -18,6 +19,7 @@ router.use('/comments', commentRoutes);
 router.use('/upload', uploadRoutes);
 router.use('/bookmarks', bookmarkRoutes);
 router.use('/search', searchRoutes);
+router.use('/notifications', notificationRoutes);
 
 export default router;
 

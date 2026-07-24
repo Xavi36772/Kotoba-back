@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import { ChapterModel } from '../models/chapter.model';
+import { WorkModel } from '../models/work.model';
+import { FollowModel } from '../models/follow.model';
 import { moderateText } from '../services/moderation.service';
+import { sendNotification } from '../services/notification.service';
 
 const allowedFields = ['work_id', 'title', 'content', 'status', 'order_number'];
 
@@ -54,6 +57,28 @@ export const createChapter = async (req: Request, res: Response): Promise<void> 
     }
 
     res.status(201).json(chapter);
+
+    // Notify followers of the author
+    (async () => {
+      try {
+        const work = await WorkModel.findById(chapter.work_id);
+        if (!work) return;
+        const followers = await FollowModel.getFollowers(work.author_id) || [];
+        for (const f of followers) {
+          const userData = (f as any).users;
+          const followerId = userData?.id || (f as any).follower_id;
+          if (followerId && followerId !== work.author_id) {
+            sendNotification(
+              followerId,
+              'new_chapter',
+              'Nuevo capítulo disponible',
+              `"${work.title}" tiene un nuevo capítulo: "${chapter.title}"`,
+              { work_id: work.id, chapter_id: chapter.id }
+            );
+          }
+        }
+      } catch (_) {}
+    })();
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal server error' });
   }

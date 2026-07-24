@@ -3,6 +3,7 @@ import { AuthRequest } from '../middleware/auth.middleware';
 import { UserModel } from '../models/user.model';
 import { WorkModel } from '../models/work.model';
 import { FollowModel } from '../models/follow.model';
+import { sendNotification } from '../services/notification.service';
 
 export const getUsers = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -142,6 +143,17 @@ export const followUser = async (req: AuthRequest, res: Response): Promise<void>
     }
 
     await FollowModel.follow(followerId, followingId);
+
+    // Notify the followed user
+    const follower = await UserModel.findById(followerId);
+    sendNotification(
+      followingId,
+      'new_follower',
+      'Nuevo seguidor',
+      `${follower?.username || 'Alguien'} ahora te sigue`,
+      { follower_id: followerId }
+    );
+
     res.status(201).json({ message: 'Ahora sigues a este usuario' });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal server error' });
