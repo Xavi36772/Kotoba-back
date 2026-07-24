@@ -53,4 +53,18 @@ export class CommentModel {
     if (error) throw error;
     return data;
   }
+
+  static async incrementLikeCount(commentId: string) {
+    const { error } = await supabaseAdmin.rpc('increment_comment_like_count', {
+      comment_id: commentId,
+    });
+    if (error) throw error;
+  }
+
+  static async decrementLikeCount(commentId: string) {
+    const { error } = await supabaseAdmin.rpc('decrement_comment_like_count', {
+      comment_id: commentId,
+    });
+    if (error) throw error;
+  }
 }
