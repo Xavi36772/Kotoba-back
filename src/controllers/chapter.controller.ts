@@ -38,9 +38,10 @@ export const createChapter = async (req: Request, res: Response): Promise<void> 
   try {
     const chapter = await ChapterModel.create(sanitize(req.body));
 
-    // Moderate chapter content
-    if (chapter.content) {
-      const result = await moderateText(chapter.content, chapter.work_id);
+    // Moderate title + content
+    const textToCheck = [chapter.title, chapter.content].filter(Boolean).join('\n');
+    if (textToCheck.trim()) {
+      const result = await moderateText(textToCheck, chapter.work_id);
       if (result.flagged) {
         await ChapterModel.delete(chapter.id);
         res.status(400).json({
@@ -62,9 +63,10 @@ export const updateChapter = async (req: Request, res: Response): Promise<void> 
   try {
     const chapter = await ChapterModel.update(req.params.id as string, sanitize(req.body));
 
-    // Moderate updated content
-    if (chapter.content) {
-      const result = await moderateText(chapter.content, chapter.work_id);
+    // Moderate updated title + content
+    const textToCheck = [chapter.title, chapter.content].filter(Boolean).join('\n');
+    if (textToCheck.trim()) {
+      const result = await moderateText(textToCheck, chapter.work_id);
       if (result.flagged) {
         await ChapterModel.delete(chapter.id);
         res.status(400).json({
