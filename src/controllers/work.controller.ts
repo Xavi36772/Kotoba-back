@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { WorkModel } from '../models/work.model';
 import { getEmbedding } from '../services/embedding.service';
+import { moderateText } from '../services/moderation.service';
 import { supabaseAdmin } from '../config/supabase';
 
 export const getWorks = async (req: Request, res: Response): Promise<void> => {
@@ -83,6 +84,22 @@ export const createWork = async (req: AuthRequest, res: Response): Promise<void>
     cleanData.author_id = req.user!.id;
     const work = await WorkModel.create(cleanData);
     storeEmbedding(work.id, work.title, work.synopsis || '');
+
+    // Moderate synopsis
+    const textToCheck = [work.title, work.synopsis].filter(Boolean).join('\n');
+    if (textToCheck.trim()) {
+      const result = await moderateText(textToCheck, work.id);
+      if (result.flagged) {
+        await WorkModel.delete(work.id);
+        res.status(400).json({
+          error: 'Historia rechazada por moderación',
+          reason: result.reason,
+          categories: result.categories,
+        });
+        return;
+      }
+    }
+
     res.status(201).json(work);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal server error' });
