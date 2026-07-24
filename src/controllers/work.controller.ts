@@ -34,7 +34,7 @@ const VALID_GENRES = [
   'Thriller', 'Misterio', 'Romance', 'Horror', 'Drama', 'Poesía',
 ];
 
-const allowedFields = ['title', 'synopsis', 'genres', 'cover_url', 'author_id', 'status', 'language', 'tags', 'updated_at'];
+const allowedFields = ['title', 'synopsis', 'genres', 'cover_url', 'author_id', 'status', 'language', 'tags', 'updated_at', 'is_mature'];
 
 function sanitize(body: any) {
   const clean: Record<string, any> = {};
