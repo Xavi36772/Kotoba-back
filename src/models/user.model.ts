@@ -20,6 +20,17 @@ export class UserModel {
     return data;
   }
 
+  static async upsert(id: string, data: any) {
+    const { data: result, error } = await supabaseAdmin
+      .from('users')
+      .upsert({ id, ...data })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return result;
+  }
+
   static async update(id: string, data: any) {
     const { data: updated, error } = await supabaseAdmin
       .from('users')

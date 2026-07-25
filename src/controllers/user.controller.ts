@@ -54,17 +54,17 @@ export const updateMe = async (req: AuthRequest, res: Response): Promise<void> =
     }
 
     const allowedFields = ['bio', 'avatar_url', 'banner_url', 'username', 'age', 'country', 'paypal_email'];
-    const cleanData: Record<string, any> = {};
+    const cleanData: Record<string, any> = { email: authUser.email };
     for (const key of allowedFields) {
       if (req.body[key] !== undefined) cleanData[key] = req.body[key];
     }
 
-    if (Object.keys(cleanData).length === 0) {
+    if (Object.keys(cleanData).length <= 1) {
       res.status(400).json({ error: 'No hay campos para actualizar' });
       return;
     }
 
-    const updated = await UserModel.update(authUser.id, cleanData);
+    const updated = await UserModel.upsert(authUser.id, cleanData);
     res.json(updated);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal server error' });
