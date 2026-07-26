@@ -16,6 +16,33 @@ function mapWork(w: any) {
   };
 }
 
+async function attachVoteStats(works: any[]) {
+  if (works.length === 0) return works;
+  const ids = works.map((w: any) => w.id);
+  const { data: voteData } = await supabaseAdmin
+    .from('work_votes')
+    .select('work_id, vote')
+    .in('work_id', ids);
+
+  const statsMap: Record<string, { total: number; count: number }> = {};
+  for (const v of (voteData || []) as any[]) {
+    if (!statsMap[v.work_id]) statsMap[v.work_id] = { total: 0, count: 0 };
+    statsMap[v.work_id].total += v.vote;
+    statsMap[v.work_id].count += 1;
+  }
+
+  return works.map((w: any) => {
+    const stats = statsMap[w.id];
+    const count = stats?.count || 0;
+    const total = stats?.total || 0;
+    return {
+      ...w,
+      rating: count > 0 ? Math.max(0, total / count) : 0,
+      rating_count: count,
+    };
+  });
+}
+
 export class WorkModel {
   static async findAll(filters?: Record<string, string>) {
     let query = supabase
@@ -31,7 +58,8 @@ export class WorkModel {
     }
     const { data, error } = await query;
     if (error) throw error;
-    return (data || []).map(mapWork);
+    const mapped = (data || []).map(mapWork);
+    return attachVoteStats(mapped);
   }
 
   static async findById(id: string) {
@@ -42,7 +70,9 @@ export class WorkModel {
       .single();
 
     if (error) throw error;
-    return mapWork(data);
+    const mapped = mapWork(data);
+    const results = await attachVoteStats([mapped]);
+    return results[0];
   }
 
   static async create(workData: any) {
@@ -95,7 +125,8 @@ export class WorkModel {
       .eq('author_id', authorId);
 
     if (error) throw error;
-    return (data || []).map(mapWork);
+    const mapped = (data || []).map(mapWork);
+    return attachVoteStats(mapped);
   }
 
   static async incrementViewCount(workId: string, userId: string) {
