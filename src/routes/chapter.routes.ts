@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { getChapterById, createChapter, updateChapter, deleteChapter, getChapter } from '../controllers/chapter.controller';
-import { getCommentsByChapterId } from '../controllers/comment.controller';
+import { getCommentsByChapterId, createChapterComment, getChapterCommentsWithLikes } from '../controllers/comment.controller';
 import { verifyToken } from '../middleware/auth.middleware';
 
 const router = Router();
@@ -8,6 +8,8 @@ const router = Router();
 router.get('/', getChapter);
 router.get('/:id', getChapterById);
 router.get('/:chapterId/comments', getCommentsByChapterId);
+router.get('/:chapterId/comments/with-likes', verifyToken, getChapterCommentsWithLikes);
+router.post('/:chapterId/comments', verifyToken, createChapterComment);
 router.post('/', verifyToken, createChapter);
 router.put('/:id', verifyToken, updateChapter);
 router.delete('/:id', verifyToken, deleteChapter);
