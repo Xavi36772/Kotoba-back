@@ -20,7 +20,8 @@ export const saveFcmToken = async (req: AuthRequest, res: Response): Promise<voi
 export const getMyNotifications = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const notifications = await NotificationModel.getByUser(req.user!.id);
-    res.json(notifications);
+    const unreadCount = await NotificationModel.getUnreadCount(req.user!.id);
+    res.json({ notifications, unreadCount });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
