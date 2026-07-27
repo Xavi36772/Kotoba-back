@@ -6,6 +6,7 @@ export class CommentModel {
       .from('comments')
       .select('*, users!user_id(username, avatar_url)')
       .eq('work_id', workId)
+      .is('chapter_id', null)
       .order('created_at', { ascending: true });
 
     if (error) throw error;
