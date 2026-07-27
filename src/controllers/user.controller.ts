@@ -64,7 +64,7 @@ export const updateMe = async (req: AuthRequest, res: Response): Promise<void> =
       return;
     }
 
-    const updated = await UserModel.upsert(authUser.id, cleanData);
+    const updated = await UserModel.update(authUser.id, cleanData);
     res.json(updated);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal server error' });
