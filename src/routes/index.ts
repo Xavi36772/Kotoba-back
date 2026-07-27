@@ -8,6 +8,7 @@ import uploadRoutes from './upload.routes';
 import bookmarkRoutes from './bookmark.routes';
 import searchRoutes from './search.routes';
 import notificationRoutes from './notification.routes';
+import recapRoutes from './recap.routes';
 
 const router = Router();
 
@@ -20,6 +21,7 @@ router.use('/upload', uploadRoutes);
 router.use('/bookmarks', bookmarkRoutes);
 router.use('/search', searchRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/recap', recapRoutes);
 
 export default router;
 
