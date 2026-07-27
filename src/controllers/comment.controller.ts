@@ -110,9 +110,14 @@ export const getChapterCommentsWithLikes = async (req: AuthRequest, res: Respons
     const likedCommentIds = await CommentLikeModel.getLikedCommentIds(userId, commentIds);
     const likedSet = new Set(likedCommentIds);
 
-    const enriched = comments.map((c: any) => ({
-      ...c,
-      is_liked: likedSet.has(c.id),
+    const enriched = await Promise.all(comments.map(async (c: any) => {
+      const replies = await CommentModel.findRepliesWithLikes(c.id, userId);
+      return {
+        ...c,
+        is_liked: likedSet.has(c.id),
+        reply_count: replies.length,
+        replies,
+      };
     }));
 
     res.json(enriched);
@@ -240,12 +245,62 @@ export const getCommentsWithUserLikes = async (req: AuthRequest, res: Response):
     const likedCommentIds = await CommentLikeModel.getLikedCommentIds(userId, commentIds);
     const likedSet = new Set(likedCommentIds);
 
-    const enriched = comments.map((c: any) => ({
-      ...c,
-      is_liked: likedSet.has(c.id),
+    const enriched = await Promise.all(comments.map(async (c: any) => {
+      const replies = await CommentModel.findRepliesWithLikes(c.id, userId);
+      return {
+        ...c,
+        is_liked: likedSet.has(c.id),
+        reply_count: replies.length,
+        replies,
+      };
     }));
 
     res.json(enriched);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+export const replyToComment = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const parentId = req.params.id as string;
+    const { content, work_id, chapter_id } = req.body;
+    if (!content || !content.trim()) {
+      res.status(400).json({ error: 'Content is required' });
+      return;
+    }
+
+    const parentComment = await CommentModel.findById(parentId);
+    if (!parentComment) {
+      res.status(404).json({ error: 'Parent comment not found' });
+      return;
+    }
+
+    const reply = await CommentModel.create({
+      work_id: work_id || parentComment.work_id,
+      chapter_id: chapter_id || parentComment.chapter_id,
+      user_id: req.user!.id,
+      content: content.trim(),
+      parent_id: parentId,
+    });
+
+    res.status(201).json(reply);
+
+    // Notify parent comment author
+    (async () => {
+      try {
+        if (parentComment.user_id !== req.user!.id) {
+          const replier = await UserModel.findById(req.user!.id);
+          sendNotification(
+            parentComment.user_id,
+            'comment_reply',
+            'Respondieron a tu comentario',
+            `${replier?.username || 'Alguien'} respondió a tu comentario`,
+            { comment_id: parentId, reply_id: reply.id, work_id: parentComment.work_id }
+          );
+        }
+      } catch (_) {}
+    })();
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal server error' });
   }

@@ -9,6 +9,7 @@ import {
   unlikeComment,
   getCommentLikes,
   getCommentsWithUserLikes,
+  replyToComment,
 } from '../controllers/comment.controller';
 import { verifyToken } from '../middleware/auth.middleware';
 
@@ -19,6 +20,9 @@ router.post('/', createComment);
 router.get('/work/:workId', getCommentsByWorkId);
 router.post('/work/:workId', verifyToken, createWorkComment);
 router.delete('/:id', deleteComment);
+
+// Reply endpoint
+router.post('/:id/replies', verifyToken, replyToComment);
 
 // Like endpoints
 router.post('/:id/like', verifyToken, likeComment);
