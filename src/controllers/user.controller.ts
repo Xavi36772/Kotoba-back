@@ -39,7 +39,17 @@ export const getMe = async (req: AuthRequest, res: Response): Promise<void> => {
       res.status(404).json({ error: 'Perfil no encontrado' });
       return;
     }
-    res.json(user);
+    let followersCount = 0;
+    let followingCount = 0;
+    try {
+      followersCount = await FollowModel.getFollowersCount(authUser.id);
+      followingCount = await FollowModel.getFollowingCount(authUser.id);
+    } catch (_) {}
+    res.json({
+      ...user,
+      followers_count: followersCount,
+      following_count: followingCount,
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
