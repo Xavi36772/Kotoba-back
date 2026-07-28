@@ -3,14 +3,30 @@ import { AuthRequest } from '../middleware/auth.middleware';
 import { WorkModel } from '../models/work.model';
 import { getEmbedding } from '../services/embedding.service';
 import { moderateText } from '../services/moderation.service';
-import { supabaseAdmin } from '../config/supabase';
+import { supabase, supabaseAdmin } from '../config/supabase';
+
+async function getUserIdFromToken(req: Request): Promise<string | null> {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return null;
+  try {
+    const { data } = await supabase.auth.getUser(token);
+    return data.user?.id || null;
+  } catch {
+    return null;
+  }
+}
 
 export const getWorks = async (req: Request, res: Response): Promise<void> => {
   try {
     const filters: Record<string, string> = {};
     if (req.query.author_id) filters.author_id = req.query.author_id as string;
     if (req.query.genre) filters.genre = req.query.genre as string;
-    const works = await WorkModel.findAll(Object.keys(filters).length > 0 ? filters : undefined);
+    const currentUserId = await getUserIdFromToken(req);
+    const includeDrafts = !!filters.author_id && currentUserId === filters.author_id;
+    const works = await WorkModel.findAll(
+      Object.keys(filters).length > 0 ? filters : undefined,
+      includeDrafts,
+    );
     res.json(works);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal server error' });
@@ -19,8 +35,13 @@ export const getWorks = async (req: Request, res: Response): Promise<void> => {
 
 export const getWorkById = async (req: Request, res: Response): Promise<void> => {
   try {
-    const work = await WorkModel.findById(req.params.id as string);
+    const currentUserId = await getUserIdFromToken(req);
+    const work = await WorkModel.findById(req.params.id as string, !!currentUserId);
     if (!work) {
+      res.status(404).json({ error: 'Work not found' });
+      return;
+    }
+    if (work.status === 'draft' && work.author_id !== currentUserId) {
       res.status(404).json({ error: 'Work not found' });
       return;
     }

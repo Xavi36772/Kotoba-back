@@ -44,13 +44,14 @@ async function attachVoteStats(works: any[]) {
 }
 
 export class WorkModel {
-  static async findAll(filters?: Record<string, string>) {
+  static async findAll(filters?: Record<string, string>, includeDrafts = false) {
     let query = supabase
       .from('works')
       .select(WORK_SELECT);
     if (filters?.author_id) {
       query = query.eq('author_id', filters.author_id);
-    } else {
+    }
+    if (!includeDrafts) {
       query = query.neq('status', 'draft');
     }
     if (filters?.genre && filters.genre !== 'Todos') {
@@ -62,14 +63,18 @@ export class WorkModel {
     return attachVoteStats(mapped);
   }
 
-  static async findById(id: string) {
-    const { data, error } = await supabase
+  static async findById(id: string, includeDrafts = false) {
+    let query = supabase
       .from('works')
       .select(WORK_SELECT)
-      .eq('id', id)
-      .single();
+      .eq('id', id);
+    if (!includeDrafts) {
+      query = query.neq('status', 'draft');
+    }
+    const { data, error } = await query.maybeSingle();
 
     if (error) throw error;
+    if (!data) return null;
     const mapped = mapWork(data);
     const results = await attachVoteStats([mapped]);
     return results[0];
@@ -118,11 +123,15 @@ export class WorkModel {
     return count || 0;
   }
 
-  static async findByAuthor(authorId: string) {
-    const { data, error } = await supabase
+  static async findByAuthor(authorId: string, includeDrafts = false) {
+    let query = supabase
       .from('works')
       .select(WORK_SELECT)
       .eq('author_id', authorId);
+    if (!includeDrafts) {
+      query = query.neq('status', 'draft');
+    }
+    const { data, error } = await query;
 
     if (error) throw error;
     const mapped = (data || []).map(mapWork);
