@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
-import { WorkModel, WORK_SELECT, mapWork } from '../models/work.model';
+import { WorkModel } from '../models/work.model';
 import { getEmbedding } from '../services/embedding.service';
 import { moderateText } from '../services/moderation.service';
 import { supabase, supabaseAdmin } from '../config/supabase';
@@ -154,78 +154,7 @@ export const updateWork = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-export const getRecommended = async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const userId = req.user?.id;
-    const seenIds = new Set<string>();
-    const scoreMap = new Map<string, number>();
-
-    if (userId) {
-      // 1. Get user's bookmarked works
-      const { data: bookmarks } = await supabaseAdmin
-        .from('bookmarks')
-        .select('work_id')
-        .eq('user_id', userId);
-
-      const bookmarkedIds = (bookmarks || []).map((b: any) => b.work_id);
-      for (const id of bookmarkedIds) seenIds.add(id);
-
-      // 2. For each bookmark, find similar works via embedding
-      for (const workId of bookmarkedIds) {
-        const { data: seedEmbedding } = await supabaseAdmin
-          .from('work_embeddings')
-          .select('embedding')
-          .eq('work_id', workId)
-          .maybeSingle();
-
-        if (!seedEmbedding) continue;
-
-        const { data: similar } = await supabaseAdmin.rpc('search_works', {
-          query_embedding: seedEmbedding.embedding,
-          match_threshold: 0.3,
-          match_count: 10,
-        });
-
-        for (const w of (similar || []) as any[]) {
-          if (seenIds.has(w.id)) continue;
-          scoreMap.set(w.id, (scoreMap.get(w.id) || 0) + (w.similarity || 0));
-        }
-      }
-    }
-
-    // 3. Build results sorted by score or fallback to popular
-    let sorted: any[];
-    if (scoreMap.size > 0) {
-      const scoredIds = [...scoreMap.entries()]
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10)
-        .map(([id]) => id);
-
-      const { data: works } = await supabaseAdmin
-        .from('works')
-        .select(WORK_SELECT)
-        .in('id', scoredIds)
-        .neq('status', 'draft');
-
-      const workMap = new Map((works || []).map((w: any) => [w.id, mapWork(w)]));
-      sorted = scoredIds.map((id) => workMap.get(id)).filter(Boolean);
-    } else {
-      // Fallback: most viewed works
-      const { data: works } = await supabaseAdmin
-        .from('works')
-        .select(WORK_SELECT)
-        .neq('status', 'draft')
-        .order('view_count', { ascending: false, nullsLast: true })
-        .limit(10);
-
-      sorted = (works || []).map(mapWork);
-    }
-
-    res.json(sorted);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Error al obtener recomendaciones' });
-  }
-}; = async (req: AuthRequest, res: Response): Promise<void> => {
+export const incrementWorkView = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     await WorkModel.incrementViewCount(req.params.workId as string, req.user!.id);
     res.json({ success: true });

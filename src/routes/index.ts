@@ -10,6 +10,7 @@ import searchRoutes from './search.routes';
 import notificationRoutes from './notification.routes';
 import recapRoutes from './recap.routes';
 import analyticsRoutes from './analytics.routes';
+import recommendationRoutes from './recommendation.routes';
 
 const router = Router();
 
@@ -24,6 +25,7 @@ router.use('/search', searchRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/recap', recapRoutes);
 router.use('/analytics', analyticsRoutes);
+router.use('/recommended', recommendationRoutes);
 
 export default router;
 
