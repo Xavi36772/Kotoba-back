@@ -20,6 +20,11 @@ import {
   getAuthorFollowerDemographics,
   getAuthorWorksPerformance,
   getAuthorRecentActivity,
+  getHeatmap,
+  getSentimentAnalysis,
+  getDemographicCross,
+  getReaderPreferences,
+  getRetentionCurve,
 } from '../controllers/analytics.controller';
 
 const router = Router();
@@ -36,6 +41,11 @@ router.get('/story/:workId/demographics', getStoryDemographics);
 router.get('/story/:workId/chapters', getStoryChapters);
 router.get('/story/:workId/peaks', getStoryPeaks);
 router.get('/story/:workId/re-reads', getStoryReReads);
+router.get('/story/:workId/heatmap', getHeatmap);
+router.get('/story/:workId/sentiment', getSentimentAnalysis);
+router.get('/story/:workId/demographics-cross', getDemographicCross);
+router.get('/story/:workId/reader-preferences', getReaderPreferences);
+router.get('/story/:workId/retention', getRetentionCurve);
 
 // ── Author analytics (per-author) ─────────────────────────────
 router.get('/author/:authorId/overview', getOverview);

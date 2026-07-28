@@ -267,4 +267,273 @@ export class StoryAnalyticsModel {
 
     return Object.values(reReadMap).sort((a, b) => b.reReadCount - a.reReadCount).slice(0, 10);
   }
+
+  static async getHeatmap(workId: string) {
+    const { data: chapters } = await supabaseAdmin
+      .from('chapters')
+      .select('id, title, order_number')
+      .eq('work_id', workId)
+      .order('order_number', { ascending: true });
+
+    if (!chapters || chapters.length === 0) return [];
+
+    const chapterIds = chapters.map(c => c.id);
+    const { data: reads } = await supabaseAdmin
+      .from('chapter_reads')
+      .select('chapter_id, user_id, read_progress, time_spent_seconds')
+      .in('chapter_id', chapterIds);
+
+    const firstChapterReads = (reads || []).filter(r => r.chapter_id === chapters[0].id).length || 1;
+
+    return chapters.map(ch => {
+      const chReads = (reads || []).filter(r => r.chapter_id === ch.id);
+      const totalReaders = new Set(chReads.map(r => r.user_id)).size;
+      const segments = [
+        { range: '0-25%', min: 0, max: 0.25 },
+        { range: '25-50%', min: 0.25, max: 0.5 },
+        { range: '50-75%', min: 0.5, max: 0.75 },
+        { range: '75-100%', min: 0.75, max: 1.01 },
+      ].map(seg => {
+        const readersAtSegment = chReads.filter(r => r.read_progress >= seg.min && r.read_progress < seg.max).length;
+        return {
+          range: seg.range,
+          readersAtSegment,
+          dropOffPercent: firstChapterReads > 0 ? Math.round(((firstChapterReads - readersAtSegment) / firstChapterReads) * 100) : 0,
+        };
+      });
+      const avgProgress = totalReaders > 0 ? chReads.reduce((sum, r) => sum + (r.read_progress || 0), 0) / chReads.length : 0;
+      const avgTimeSeconds = chReads.length > 0 ? Math.round(chReads.reduce((sum, r) => sum + (r.time_spent_seconds || 0), 0) / chReads.length) : 0;
+
+      return {
+        chapterId: ch.id,
+        title: ch.title,
+        orderNumber: ch.order_number,
+        totalReaders,
+        segments,
+        avgProgress: Math.round(avgProgress * 100) / 100,
+        avgTimeSeconds,
+      };
+    });
+  }
+
+  static async getSentimentAnalysis(workId: string) {
+    const { data: chapters } = await supabaseAdmin
+      .from('chapters')
+      .select('id, title, order_number')
+      .eq('work_id', workId)
+      .order('order_number', { ascending: true });
+
+    if (!chapters || chapters.length === 0) return [];
+
+    const chapterIds = chapters.map(c => c.id);
+    const { data: comments } = await supabaseAdmin
+      .from('comments')
+      .select('chapter_id, content')
+      .in('chapter_id', chapterIds);
+
+    const positiveWords = ['increíble', 'increible', 'genial', 'amazing', 'love', 'hermoso', 'perfecto', 'bonito', 'excelente', 'encanta', 'brillante', 'fantástico', 'fantastico', 'wow', 'gusta', 'encantó', 'emocionante', 'padre', 'chido', 'bueno', 'mejor', 'top', 'wena', 'cool', 'nice'];
+    const negativeWords = ['malo', 'aburrido', 'terrible', 'horrible', 'hate', 'odio', 'feo', 'boring', 'dropeo', 'dropped', 'decepcionante', 'meh', 'pésimo', 'pesimo', 'asqueroso', 'basura', 'asco', 'lamentable', 'malo'];
+
+    return chapters.map(ch => {
+      const chComments = (comments || []).filter(c => c.chapter_id === ch.id);
+      let positiveCount = 0;
+      let negativeCount = 0;
+      chComments.forEach(c => {
+        const text = (c.content || '').toLowerCase();
+        const isPositive = positiveWords.some(w => text.includes(w));
+        const isNegative = negativeWords.some(w => text.includes(w));
+        if (isPositive) positiveCount++;
+        if (isNegative) negativeCount++;
+      });
+      const total = chComments.length;
+      const neutralCount = total - positiveCount - negativeCount;
+      const sentimentScore = total > 0 ? Math.round(((positiveCount - negativeCount) / total) * 100) / 100 : 0;
+
+      return {
+        chapterId: ch.id,
+        title: ch.title,
+        orderNumber: ch.order_number,
+        totalComments: total,
+        positiveCount,
+        negativeCount,
+        neutralCount: Math.max(0, neutralCount),
+        sentimentScore,
+      };
+    });
+  }
+
+  static async getDemographicCrossAnalysis(workId: string) {
+    const { data: reads } = await supabaseAdmin
+      .from('chapter_reads')
+      .select('user_id, read_progress')
+      .eq('work_id', workId);
+
+    if (!reads || reads.length === 0) return { ageGroups: [], countries: [] };
+
+    const userIds = [...new Set((reads as any[]).map(r => r.user_id))];
+    const { data: users } = await supabaseAdmin
+      .from('users')
+      .select('id, age, country')
+      .in('id', userIds);
+
+    const userMap: Record<string, any> = {};
+    (users || []).forEach(u => { userMap[u.id] = u; });
+
+    const ageGroups: Record<string, { readers: Set<string>, progress: number[], completed: number }> = {};
+    const countryGroups: Record<string, { readers: Set<string>, progress: number[], completed: number }> = {};
+
+    (reads as any[]).forEach(r => {
+      const user = userMap[r.user_id];
+      if (!user) return;
+      const age = user.age;
+      let range = 'No especificado';
+      if (age != null) {
+        if (age < 18) range = 'Menor de 18';
+        else if (age <= 24) range = '18-24';
+        else if (age <= 34) range = '25-34';
+        else if (age <= 44) range = '35-44';
+        else if (age <= 54) range = '45-54';
+        else range = '55+';
+      }
+      if (!ageGroups[range]) ageGroups[range] = { readers: new Set(), progress: [], completed: 0 };
+      ageGroups[range].readers.add(r.user_id);
+      ageGroups[range].progress.push(r.read_progress || 0);
+      if ((r.read_progress || 0) >= 0.9) ageGroups[range].completed++;
+
+      const country = user.country || 'Desconocido';
+      if (!countryGroups[country]) countryGroups[country] = { readers: new Set(), progress: [], completed: 0 };
+      countryGroups[country].readers.add(r.user_id);
+      countryGroups[country].progress.push(r.read_progress || 0);
+      if ((r.read_progress || 0) >= 0.9) countryGroups[country].completed++;
+    });
+
+    const computeMetrics = (data: { readers: Set<string>, progress: number[], completed: number }) => ({
+      readerCount: data.readers.size,
+      avgProgress: data.progress.length > 0 ? Math.round((data.progress.reduce((a, b) => a + b, 0) / data.progress.length) * 100) / 100 : 0,
+      completionRate: data.readers.size > 0 ? Math.round((data.completed / data.readers.size) * 100) : 0,
+    });
+
+    return {
+      ageGroups: Object.entries(ageGroups)
+        .map(([ageRange, data]) => ({ ageRange, ...computeMetrics(data) }))
+        .sort((a, b) => b.readerCount - a.readerCount),
+      countries: Object.entries(countryGroups)
+        .map(([country, data]) => ({ country, ...computeMetrics(data) }))
+        .sort((a, b) => b.readerCount - a.readerCount)
+        .slice(0, 10),
+    };
+  }
+
+  static async getReaderPreferences(workId: string) {
+    const { data: work } = await supabaseAdmin
+      .from('works')
+      .select('genres')
+      .eq('id', workId)
+      .single();
+
+    if (!work) return { expectedReadersPercent: 0, unexpectedReadersPercent: 0, genreAffinity: [] };
+
+    const workGenres = work.genres || [];
+    const { data: reads } = await supabaseAdmin
+      .from('chapter_reads')
+      .select('user_id')
+      .eq('work_id', workId);
+
+    if (!reads || reads.length === 0) return { expectedReadersPercent: 0, unexpectedReadersPercent: 0, genreAffinity: [] };
+
+    const readerIds = [...new Set((reads as any[]).map(r => r.user_id))];
+    const { data: otherReads } = await supabaseAdmin
+      .from('chapter_reads')
+      .select('user_id, work_id')
+      .in('user_id', readerIds)
+      .neq('work_id', workId);
+
+    const otherWorkIds = [...new Set((otherReads || []).map((r: any) => r.work_id))];
+    let otherWorks: any[] = [];
+    if (otherWorkIds.length > 0) {
+      const { data } = await supabaseAdmin
+        .from('works')
+        .select('id, genres')
+        .in('id', otherWorkIds);
+      otherWorks = data || [];
+    }
+
+    const otherWorkGenreMap: Record<string, string[]> = {};
+    (otherWorks as any[]).forEach(w => { otherWorkGenreMap[w.id] = w.genres || []; });
+
+    const readerGenreCounts: Record<string, Record<string, number>> = {};
+    (otherReads || []).forEach((r: any) => {
+      if (!readerGenreCounts[r.user_id]) readerGenreCounts[r.user_id] = {};
+      const genres = otherWorkGenreMap[r.work_id] || [];
+      genres.forEach((g: string) => {
+        readerGenreCounts[r.user_id][g] = (readerGenreCounts[r.user_id][g] || 0) + 1;
+      });
+    });
+
+    let expected = 0;
+    let unexpected = 0;
+    const genreReaderCount: Record<string, Set<string>> = {};
+
+    readerIds.forEach(uid => {
+      const readerGenres = Object.keys(readerGenreCounts[uid] || {});
+      const hasOverlap = readerGenres.some(g => workGenres.includes(g));
+      if (hasOverlap) expected++;
+      else unexpected++;
+
+      workGenres.forEach((g: string) => {
+        if (!genreReaderCount[g]) genreReaderCount[g] = new Set();
+        genreReaderCount[g].add(uid);
+      });
+    });
+
+    const total = readerIds.length || 1;
+    return {
+      expectedReadersPercent: Math.round((expected / total) * 100),
+      unexpectedReadersPercent: Math.round((unexpected / total) * 100),
+      genreAffinity: workGenres.map((genre: string) => ({
+        genre,
+        readerCount: (genreReaderCount[genre] || new Set()).size,
+      })),
+    };
+  }
+
+  static async getRetentionCurve(workId: string) {
+    const { data: chapters } = await supabaseAdmin
+      .from('chapters')
+      .select('id, title, order_number')
+      .eq('work_id', workId)
+      .order('order_number', { ascending: true });
+
+    if (!chapters || chapters.length < 2) return [];
+
+    const chapterIds = chapters.map(c => c.id);
+    const { data: reads } = await supabaseAdmin
+      .from('chapter_reads')
+      .select('chapter_id, user_id')
+      .in('chapter_id', chapterIds);
+
+    const readersByChapter: Record<string, Set<string>> = {};
+    (reads || []).forEach(r => {
+      if (!readersByChapter[r.chapter_id]) readersByChapter[r.chapter_id] = new Set();
+      readersByChapter[r.chapter_id].add(r.user_id);
+    });
+
+    return chapters.slice(0, -1).map((ch, idx) => {
+      const nextCh = chapters[idx + 1];
+      const readersAt = readersByChapter[ch.id]?.size || 0;
+      const readersAtNext = readersByChapter[nextCh.id]?.size || 0;
+      const retained = readersAt > 0
+        ? [...(readersByChapter[ch.id] || [])].filter(uid => (readersByChapter[nextCh.id] || new Set()).has(uid)).length
+        : 0;
+
+      return {
+        chapterOrder: ch.order_number,
+        chapterTitle: ch.title,
+        readersAtChapter: readersAt,
+        retainedToNext: retained,
+        retentionRate: readersAt > 0 ? Math.round((retained / readersAt) * 100) : 0,
+        nextChapterTitle: nextCh.title,
+      };
+    });
+  }
 }

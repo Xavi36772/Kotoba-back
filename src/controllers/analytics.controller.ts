@@ -308,3 +308,55 @@ export const getGenreAnalytics = async (req: Request, res: Response): Promise<vo
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
+
+// ── Detailed Per-Story Mining Endpoints ────────────────────────
+
+export const getHeatmap = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workId = req.params.workId as string;
+    const data = await StoryAnalyticsModel.getHeatmap(workId);
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+export const getSentimentAnalysis = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workId = req.params.workId as string;
+    const data = await StoryAnalyticsModel.getSentimentAnalysis(workId);
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+export const getDemographicCross = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workId = req.params.workId as string;
+    const data = await StoryAnalyticsModel.getDemographicCrossAnalysis(workId);
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+export const getReaderPreferences = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workId = req.params.workId as string;
+    const data = await StoryAnalyticsModel.getReaderPreferences(workId);
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+export const getRetentionCurve = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workId = req.params.workId as string;
+    const data = await StoryAnalyticsModel.getRetentionCurve(workId);
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
