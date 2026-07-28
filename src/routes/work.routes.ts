@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getWorks, getWorkById, createWork, updateWork, deleteWork, incrementWorkView, reindexWorks, getGenres } from '../controllers/work.controller';
+import { getWorks, getWorkById, createWork, updateWork, deleteWork, incrementWorkView, reindexWorks, getGenres, getRecommended } from '../controllers/work.controller';
 import { getChaptersByWorkId } from '../controllers/chapter.controller';
 import { getCommentsByWorkId, createWorkComment, getCommentsWithUserLikes } from '../controllers/comment.controller';
 import { voteWork, unvoteWork, getWorkVoteAndBookmarkStatus } from '../controllers/vote.controller';
@@ -9,6 +9,7 @@ const router = Router();
 
 router.get('/', getWorks);
 router.get('/genres', getGenres);
+router.get('/recommended', verifyToken, getRecommended);
 router.post('/reindex', verifyToken, reindexWorks);
 router.get('/:id', getWorkById);
 router.get('/:workId/chapters', getChaptersByWorkId);

@@ -6,7 +6,7 @@ export const WORK_SELECT = `
   chapters:chapters(count)
 `;
 
-function mapWork(w: any) {
+export function mapWork(w: any) {
   return {
     ...w,
     author_name: w.users?.username || '',
