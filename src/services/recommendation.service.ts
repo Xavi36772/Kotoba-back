@@ -56,7 +56,7 @@ export async function getRecommendedWorks(userId?: string) {
     .from('works')
     .select(WORK_SELECT)
     .neq('status', 'draft')
-    .order('view_count', { ascending: false, nullsLast: true })
+    .order('view_count', { ascending: false })
     .limit(10);
 
   return (works || []).map(mapWork);
