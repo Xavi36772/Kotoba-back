@@ -28,7 +28,7 @@ export const searchWorks = async (req: Request, res: Response): Promise<void> =>
       let fbQuery = supabase
         .from('works')
         .select(WORK_SELECT)
-        .or(`title.ilike.%${sanitizedQuery}%,synopsis.ilike.%${sanitizedQuery}%`)
+        .or(`title.ilike.%${sanitizedQuery}%,synopsis.ilike.%${sanitizedQuery}%,tags.cs.{${sanitizedQuery}}`)
         .neq('status', 'draft')
         .limit(20);
       fbQuery = applyGenreFilter(fbQuery, genreFilter);
@@ -56,7 +56,7 @@ export const searchWorks = async (req: Request, res: Response): Promise<void> =>
       let fbQuery = supabase
         .from('works')
         .select(WORK_SELECT)
-        .or(`title.ilike.%${sanitizedQuery}%,synopsis.ilike.%${sanitizedQuery}%`)
+        .or(`title.ilike.%${sanitizedQuery}%,synopsis.ilike.%${sanitizedQuery}%,tags.cs.{${sanitizedQuery}}`)
         .neq('status', 'draft')
         .limit(20);
       fbQuery = applyGenreFilter(fbQuery, genreFilter);
