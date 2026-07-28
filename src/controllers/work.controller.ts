@@ -103,6 +103,7 @@ export const createWork = async (req: AuthRequest, res: Response): Promise<void>
     }
     const cleanData = sanitize(req.body);
     cleanData.author_id = req.user!.id;
+    if (cleanData.status === 'published') cleanData.status = 'draft';
     const work = await WorkModel.create(cleanData);
     storeEmbedding(work.id, work.title, work.synopsis || '');
 
@@ -132,6 +133,17 @@ export const updateWork = async (req: Request, res: Response): Promise<void> => 
     if (req.body.genres !== undefined) {
       const error = validateGenres(req.body.genres);
       if (error) { res.status(400).json({ error }); return; }
+    }
+    if (req.body.status === 'published') {
+      const { count, error: countError } = await supabaseAdmin
+        .from('chapters')
+        .select('*', { count: 'exact', head: true })
+        .eq('work_id', req.params.id);
+      if (countError) throw countError;
+      if (count === 0) {
+        res.status(400).json({ error: 'No puedes publicar una historia sin capítulos' });
+        return;
+      }
     }
     const work = await WorkModel.update(req.params.id as string, sanitize(req.body));
     storeEmbedding(work.id, work.title, work.synopsis || '');
