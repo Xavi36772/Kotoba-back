@@ -3,7 +3,11 @@ import { AuthRequest } from '../middleware/auth.middleware';
 import { ReadingSessionModel } from '../models/reading_session.model';
 import { ChapterReadModel } from '../models/chapter_read.model';
 import { WorkModel } from '../models/work.model';
+import { StoryAnalyticsModel } from '../models/story_analytics.model';
+import { AuthorDashboardModel } from '../models/author_dashboard.model';
 import { supabaseAdmin } from '../config/supabase';
+
+// ── Tracking Endpoints ──────────────────────────────────────────
 
 export const startSession = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -59,6 +63,125 @@ export const chapterRead = async (req: AuthRequest, res: Response): Promise<void
   }
 };
 
+// ── Story Analytics Endpoints ───────────────────────────────────
+
+export const getStoryOverview = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workId = req.params.workId as string;
+    const data = await StoryAnalyticsModel.getOverview(workId);
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+export const getStoryVoteTrend = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workId = req.params.workId as string;
+    const days = parseInt(req.query.days as string) || 30;
+    const data = await StoryAnalyticsModel.getVoteTrend(workId, days);
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+export const getStoryDemographics = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workId = req.params.workId as string;
+    const data = await StoryAnalyticsModel.getReaderDemographics(workId);
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+export const getStoryChapters = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workId = req.params.workId as string;
+    const data = await StoryAnalyticsModel.getChapterAnalytics(workId);
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+export const getStoryPeaks = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workId = req.params.workId as string;
+    const data = await StoryAnalyticsModel.getReadingPeaks(workId);
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+export const getStoryReReads = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const workId = req.params.workId as string;
+    const data = await StoryAnalyticsModel.getReReadPatterns(workId);
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+// ── Author Dashboard Endpoints ──────────────────────────────────
+
+export const getAuthorOverview = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authorId = req.params.authorId as string;
+    const data = await AuthorDashboardModel.getOverview(authorId);
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+export const getAuthorFollowerGrowth = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authorId = req.params.authorId as string;
+    const days = parseInt(req.query.days as string) || 30;
+    const data = await AuthorDashboardModel.getFollowerGrowth(authorId, days);
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+export const getAuthorFollowerDemographics = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authorId = req.params.authorId as string;
+    const data = await AuthorDashboardModel.getFollowerDemographics(authorId);
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+export const getAuthorWorksPerformance = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authorId = req.params.authorId as string;
+    const data = await AuthorDashboardModel.getWorksPerformance(authorId);
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+export const getAuthorRecentActivity = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authorId = req.params.authorId as string;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const data = await AuthorDashboardModel.getRecentActivity(authorId, limit);
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+// ── Legacy Author Stats (backwards compatible) ──────────────────
+
 export const getOverview = async (req: Request, res: Response): Promise<void> => {
   try {
     const authorId = req.params.authorId as string;
@@ -87,9 +210,7 @@ export const getOverview = async (req: Request, res: Response): Promise<void> =>
     const sessions = (sessionsResult.data || []) as any[];
     const followers = followersResult.count || 0;
 
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const recentReads = reads; // all reads
-    const activeReaders = new Set(recentReads.map((r: any) => r.user_id)).size;
+    const activeReaders = new Set(reads.map((r: any) => r.user_id)).size;
     const totalReads = reads.length;
     const avgSessionDuration = sessions.length > 0
       ? Math.round(sessions.reduce((sum: number, s: any) => sum + s.duration_seconds, 0) / sessions.length)
@@ -98,13 +219,22 @@ export const getOverview = async (req: Request, res: Response): Promise<void> =>
     const completedReads = reads.filter((r: any) => r.read_progress >= 0.9).length;
     const completionRate = totalReads > 0 ? Math.round((completedReads / totalReads) * 100) : 0;
 
+    let authorFollowers = 0;
+    try {
+      const { count } = await supabaseAdmin
+        .from('followers')
+        .select('*', { count: 'exact', head: true })
+        .eq('following_id', authorId);
+      authorFollowers = count || 0;
+    } catch (_) {}
+
     res.json({
       totalReads,
       activeReaders,
       avgSessionDuration,
       totalChaptersRead,
       completionRate,
-      totalFollowers: followers,
+      totalFollowers: authorFollowers,
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal server error' });
