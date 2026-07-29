@@ -11,6 +11,7 @@ import notificationRoutes from './notification.routes';
 import recapRoutes from './recap.routes';
 import analyticsRoutes from './analytics.routes';
 import recommendationRoutes from './recommendation.routes';
+import taggingRoutes from './tagging.routes';
 
 const router = Router();
 
@@ -26,6 +27,7 @@ router.use('/notifications', notificationRoutes);
 router.use('/recap', recapRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/recommended', recommendationRoutes);
+router.use('/tags', taggingRoutes);
 
 export default router;
 

@@ -3,6 +3,7 @@ import { AuthRequest } from '../middleware/auth.middleware';
 import { WorkModel } from '../models/work.model';
 import { getEmbedding } from '../services/embedding.service';
 import { moderateText } from '../services/moderation.service';
+import { predictTags } from '../services/tagging.service';
 import { supabase, supabaseAdmin } from '../config/supabase';
 
 async function getUserIdFromToken(req: Request): Promise<string | null> {
@@ -105,6 +106,17 @@ export const createWork = async (req: AuthRequest, res: Response): Promise<void>
     const cleanData = sanitize(req.body);
     cleanData.author_id = req.user!.id;
     if (cleanData.status === 'published') cleanData.status = 'draft';
+
+    // Auto-tag si no se proporcionaron tags explícitamente
+    if (!cleanData.tags || !Array.isArray(cleanData.tags) || cleanData.tags.length === 0) {
+      if (cleanData.synopsis && typeof cleanData.synopsis === 'string' && cleanData.synopsis.trim()) {
+        const prediction = await predictTags(cleanData.synopsis);
+        if (prediction && prediction.tags.length > 0) {
+          cleanData.tags = prediction.tags;
+        }
+      }
+    }
+
     const work = await WorkModel.create(cleanData);
     storeEmbedding(work.id, work.title, work.synopsis || '', work.genres, work.tags);
 
