@@ -10,6 +10,7 @@ export interface PredictTagsResult {
 export async function predictTags(synopsis: string): Promise<PredictTagsResult | null> {
   try {
     const res = await axios.post(`${TAGGING_SERVICE_URL}/predict-tags`, { synopsis }, { timeout: 10000 });
+    if (res.data.error) return null;
     return res.data;
   } catch {
     return null;
