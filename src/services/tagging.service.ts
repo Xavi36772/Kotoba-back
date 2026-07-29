@@ -9,10 +9,17 @@ export interface PredictTagsResult {
 
 export async function predictTags(synopsis: string): Promise<PredictTagsResult | null> {
   try {
-    const res = await axios.post(`${TAGGING_SERVICE_URL}/predict-tags`, { synopsis }, { timeout: 10000 });
-    if (res.data.error) return null;
+    const url = `${TAGGING_SERVICE_URL}/predict-tags`;
+    console.log(`[TaggingService] Calling ${url}`);
+    const res = await axios.post(url, { synopsis }, { timeout: 15000 });
+    console.log(`[TaggingService] Response status=${res.status}`, JSON.stringify(res.data));
+    if (res.data.error) {
+      console.log(`[TaggingService] Error: ${res.data.error}`);
+      return null;
+    }
     return res.data;
-  } catch {
+  } catch (err: any) {
+    console.log(`[TaggingService] Request failed:`, err.message);
     return null;
   }
 }
